@@ -3,8 +3,9 @@ import { AuthService } from './auth.service';
 import { User } from '../../models/User';
 import { LoginPayload, UserCreatePayload } from './entities';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { ControllerName } from '../../utils/enums';
 
-@Controller('auth')
+@Controller(ControllerName.Authentication)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
