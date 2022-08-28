@@ -3,3 +3,8 @@ export interface UserCreatePayload {
   password: string;
   username: string;
 }
+
+export interface LoginPayload {
+  password: string;
+  username: string;
+}

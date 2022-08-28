@@ -3,30 +3,35 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserDocument, UserField, UserSchema } from '../../models/User';
 import { AuthController } from './auth.contoller';
 import { AuthService } from './auth.service';
-import * as bcrypt from 'bcryptjs';
-import Const from '../../constants';
+import { compareHash, hash } from '../../utils/functions';
+import jwtConstants from '../../config/jwt';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthStrategy } from './auth.strategy';
 
 @Module({
   imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: jwtConstants.secret,
+      signOptions: { expiresIn: jwtConstants.expiresIn },
+    }),
     MongooseModule.forFeatureAsync([
       {
         name: User.name,
         useFactory: () => {
           const schema = UserSchema;
-          schema.pre('save', function (next) {
+          schema.pre('save', async function (next) {
             const user: UserDocument = this;
 
             if (!user.isModified(UserField.password)) return next();
 
-            bcrypt.genSalt(Const.SALT_WORK_FACTOR, function (err, salt) {
-              if (err) return next(err);
-
-              bcrypt.hash(user[UserField.password], salt, function (err, hash) {
-                if (err) return next(err);
-                user[UserField.password] = hash;
-                next();
-              });
-            });
+            try {
+              user[UserField.password] = await hash(user[UserField.password]);
+              next();
+            } catch (e) {
+              next(e);
+            }
           });
 
           schema.pre('save', function (next) {
@@ -35,15 +40,17 @@ import Const from '../../constants';
             next();
           });
 
-          schema.methods.comparePassword = function (candidatePassword, cb) {
-            bcrypt.compare(
-              candidatePassword,
-              this[UserField.password],
-              function (err, isMatch) {
-                if (err) return cb(err);
-                cb(null, isMatch);
-              },
-            );
+          schema.methods.comparePassword = async function (
+            candidatePassword: string,
+          ) {
+            try {
+              return await compareHash(
+                candidatePassword,
+                this[UserField.password],
+              );
+            } catch (e) {
+              return e;
+            }
           };
 
           return schema;
@@ -52,6 +59,6 @@ import Const from '../../constants';
     ]),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, AuthStrategy],
 })
 export class AuthModule {}
