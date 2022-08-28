@@ -1,63 +1,32 @@
-import { Schema, Types, Document, Model, model } from 'mongoose';
-import * as bcrypt from 'bcryptjs';
-import Const from '../constants';
-import { isEmail } from 'validator';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
-export interface IUser extends Document {
-  _id: Types.ObjectId;
-  username: string;
-  email: string;
-  password: string;
-  avatarId?: string;
+export type UserDocument = User & Document;
 
-  updatedAt: number;
+export enum UserField {
+  username = 'username',
+  email = 'email',
+  avatar = 'avatar',
+  password = 'password',
+  updatedAt = 'updatedAt',
 }
 
-const UserSchema = new Schema<IUser>({
-  username: { type: String, required: true, createIndexes: { unique: true } },
-  email: {
-    type: String,
-    required: true,
-    validate: [isEmail, Const.validationErrors.invalidEmail],
-  },
-  password: { type: String, required: true },
-  avatarId: { type: String },
-  updatedAt: { type: Number },
-});
+@Schema()
+export class User {
+  @Prop({ required: true, unique: true })
+  [UserField.username]: string;
 
-/**
- * Used to hash password before create
- */
-UserSchema.pre('save', function (next) {
-  const user: IUser = this;
+  @Prop({ required: true })
+  [UserField.email]: string;
 
-  if (!user.isModified('password')) return next();
+  @Prop({ required: true })
+  [UserField.password]: string;
 
-  bcrypt.genSalt(Const.SALT_WORK_FACTOR, function (err, salt) {
-    if (err) return next(err);
+  @Prop({ required: false })
+  [UserField.avatar]?: string;
 
-    bcrypt.hash(user.password, salt, function (err, hash) {
-      if (err) return next(err);
-      user.password = hash;
-      next();
-    });
-  });
-});
+  @Prop({ required: false })
+  [UserField.updatedAt]: number;
+}
 
-/**
- * Used to create timestamp
- */
-UserSchema.pre('save', function (next) {
-  const user: IUser = this;
-  user.updatedAt = Date.now();
-  next();
-});
-
-UserSchema.methods.comparePassword = function (candidatePassword, cb) {
-  bcrypt.compare(candidatePassword, this.password, function (err, isMatch) {
-    if (err) return cb(err);
-    cb(null, isMatch);
-  });
-};
-
-export const User: Model<IUser> = model('User', UserSchema);
+export const UserSchema = SchemaFactory.createForClass(User);

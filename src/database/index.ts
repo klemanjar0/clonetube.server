@@ -1,11 +1,4 @@
-import * as mongoose from 'mongoose';
 import config from './config';
+import { MongooseModule } from '@nestjs/mongoose';
 
-export const connectDatabase = () =>
-  new Promise(async (resolve, reject) => {
-    try {
-      await mongoose.connect(config.db_url, resolve);
-    } catch (e) {
-      reject(e);
-    }
-  });
+export const DatabaseModule = MongooseModule.forRoot(config.db_url);
